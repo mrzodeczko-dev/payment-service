@@ -1,0 +1,114 @@
+services:
+  # --------------------------------------------------------------------------------------------------------------------
+  # PAYMENT MYSQL
+  # --------------------------------------------------------------------------------------------------------------------
+  payment-mysql:
+    image: mysql:latest
+    restart: unless-stopped
+    volumes:
+      - payment-mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PAYMENT_SERVICE_MYSQL_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PAYMENT_SERVICE_MYSQL_DB_NAME}
+      MYSQL_USER: ${PAYMENT_SERVICE_MYSQL_DB_USER}
+      MYSQL_PASSWORD: ${PAYMENT_SERVICE_MYSQL_DB_PASSWORD}
+    command: >
+      --default-time-zone='+00:00'
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=${PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE}
+      --max-connections=${PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS}
+    ports:
+      - '${PAYMENT_SERVICE_MYSQL_DB_PORT}:3306'
+
+    # Ustawia twarde limity zasobów na poziomie systemu operacyjnego (cgroups). Docker przekazuje te wartości
+    # bezpośrednio do kernela Linuxa — kontener fizycznie nie może ich przekroczyć.
+    # Bez tych limitów jeden kontener może zająć cały RAM hosta. Scenariusz: payment-service dostaje spike ruchu,
+    # zaczyna buforować w pamięci, zjada 8GB RAM, system operacyjny uruchamia OOM Killer który zabija losowe procesy
+    # — może zabić bazę danych obok. Z limitem: w najgorszym wypadku payment-service sam dostaje OOM i restartuje się,
+    # reszta systemu żyje.
+    # cpus: "1.0" oznacza maksymalnie 1 pełny rdzeń (quota schedulera, nie fizyczny rdzeń). Bez tego jeden "uciekający"
+    # kontener może zmonopolizować CPU i zagłodzić pozostałe serwisy.
+    # Jak to pomaga w przyszłości: gdy dorzucisz order-service i invoice-service do tego samego docker-compose.yml,
+    # każdy serwis ma zagwarantowane zasoby i żaden nie może zdusić pozostałych. Na jednej maszynie możesz bezpiecznie
+    # uruchomić wszystkie trzy serwisy + trzy bazy wiedząc że suma limitów nie przekroczy zasobów hosta.
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    # Konfiguruje sterownik logowania Dockera z rotacją plików. Łącznie maksymalnie 50M × 3 = 150MB na logi jednego
+    # kontenera.
+    # Bez tej sekcji Docker używa domyślnie json-file bez żadnych limitów rozmiaru. Spring Boot i MySQL są gadatliwe
+    # — przy normalnym ruchu generują dziesiątki MB logów dziennie. Po tygodniu możesz mieć gigabajty w
+    # /var/lib/docker/containers/<id>/<id>-json.log. Dysk się zapełnia → Docker nie może pisać logów → kontenery
+    # zaczynają się dziwnie zachowywać lub crashować.
+    # max-file: "3" oznacza że Docker trzyma 3 pliki: aktualny + 2 poprzednie po rotacji. Masz historię ale nie
+    # pożerasz dysku.
+    # Jak to pomaga w przyszłości: gdy wdrożysz to na VPS z dyskiem 20GB, nie obudzisz się po miesiącu z serwerem który
+    # padł bo logi zjadły całe miejsce. To jest jeden z najczęstszych problemów na pierwszych produkcyjnych wdrożeniach.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    # Poziom 1 — proces żyje (Docker domyślnie): wie tylko że kontener się uruchomił. MySQL może być w trakcie
+    # inicjalizacji i jeszcze nie akceptować połączeń.
+
+    # Poziom 2 — mysqladmin ping: potwierdza że serwer MySQL akceptuje połączenia TCP. Ale nie sprawdza czy Twoja baza
+    # danych została utworzona. MySQL może odpowiadać na pingi podczas gdy payments_db jeszcze nie istnieje — bo
+    # tworzenie bazy dzieje się asynchronicznie podczas pierwszego startu.
+
+    # Poziom 3 — ten SELECT: sprawdza że payments_db faktycznie istnieje w information_schema. Dopiero wtedy kontener
+    # dostaje status healthy i payment-service może się podłączyć. Bez tego payment-service mógłby wystartować, próbować
+    # połączyć się z bazą która jeszcze nie ma schematu i crashować.
+
+    # $$MYSQL_USER — podwójne $$ bo Docker Compose interpoluje zmienne ze ${}, a w CMD-SHELL muszą być zmienne
+    # środowiskowe kontenera (nie Compose), więc escapujesz dolara żeby Compose tego nie ruszył.
+    healthcheck:
+      test: [ "CMD-SHELL", "mysql -h localhost -u $$MYSQL_USER -p$$MYSQL_PASSWORD -e \"SELECT 1 FROM information_schema.schemata WHERE schema_name='$$MYSQL_DATABASE'\"" ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - mr-network
+
+  # --------------------------------------------------------------------------------------------------------------------
+  # PAYMENT SERVICE
+  # --------------------------------------------------------------------------------------------------------------------
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    restart: on-failure:5
+    ports:
+      - "${PAYMENT_SERVICE_PORT}:${PAYMENT_SERVICE_PORT}"
+    depends_on:
+      payment-mysql:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: ${PAYMENT_SERVICE_APPLICATION_NAME}
+      SPRING_DATASOURCE_URL: jdbc:mysql://payment-mysql:3306/${PAYMENT_SERVICE_MYSQL_DB_NAME}?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${PAYMENT_SERVICE_MYSQL_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${PAYMENT_SERVICE_MYSQL_DB_PASSWORD}
+      SERVER_PORT: ${PAYMENT_SERVICE_PORT}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    networks:
+      - mr-network
+
+
+volumes:
+  payment-mysql:
+
+networks:
+  mr-network:

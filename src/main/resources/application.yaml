@@ -1,0 +1,155 @@
+server:
+  port: ${SERVER_PORT}
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME}
+  # To jest konfiguracja która włącza Project Loom — funkcjonalność wprowadzoną w Javie 21.
+  # Każde żądanie HTTP dostawało jeden wątek systemowy (platform thread). Wątek systemowy to ciężki zasób — każdy
+  # zajmuje około 1MB pamięci i jest zarządzany przez system operacyjny.
+
+  # Scenariusz który zabija aplikację:
+  #  Przychodzi 1000 żądań jednocześnie
+  #    ↓
+  #  Każde żądanie czeka na bazę danych (np. 200ms)
+  #    ↓
+  #  1000 wątków systemowych zablokowanych na I/O
+  #    ↓
+  #  Brak wolnych wątków → kolejne żądania czekają w kolejce
+  #    ↓
+  #  Timeout, przeciążenie, aplikacja pada
+  # Wątek czeka bezczynnie na odpowiedź z bazy. Marnuje pamięć i zasoby CPU nic nie robiąc.
+
+  # Wirtualne wątki są zarządzane przez JVM, nie przez system operacyjny. Są bardzo lekkie — możesz ich mieć miliony.
+  # Kiedy wirtualny wątek czeka na I/O (baza, HTTP call, plik), JVM go "odkłada" i przydziela wolny wątek systemowy
+  # innemu wirtualnemu wątkowi który ma coś do roboty.
+  #  Przychodzi 1000 żądań jednocześnie
+  #    ↓
+  #  1000 wirtualnych wątków — każdy zajmuje ułamek pamięci
+  #    ↓
+  #  Wątek czeka na bazę → JVM go odkłada, wątek systemowy obsługuje inne żądanie
+  #    ↓
+  #  Baza odpowiada → wątek wraca do pracy
+  #    ↓
+  #  Aplikacja obsługuje tysiące żądań bez przeciążenia
+
+  # Spring Boot przy virtual.enabled: true uruchamia każde żądanie HTTP na wirtualnym wątku zamiast na wątku z puli.
+  # Zmiana jednej linijki konfiguracji — zero zmian w kodzie aplikacji.
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    # Co oznacza to ustawienie?
+    # To ustawienie wylacza mechanizm Open Session In View, czyli mechanizm, ktory zamyka polaczenie
+    # z baza danych natychmiast po zakonczeniu transakcji w serwisie (kiedy jest ustawiona na true).
+    # Gdy ta opcja jest ustawiona na true, sesja Hibernate pozostaje otwarta przez caly czas requesta HTTP
+    # az do momentu wygenerowania JSON i wyslania go do klienta.
+    # Zaleta - jesli w kontrolerze sprobujesz odczytac pole ladowane leniwie np. order.getItems(), Hibernate
+    # po cichu dociagnie dane z bazy, mimo ze transakcja w bazie juz sie skonczyla.
+    # Wada - trzymasz polaczenie z bazy danych zajete o wiele dluzej niz to konieczne (np. podczas renderowania
+    # JSON, kiedy juz nie jest potrzebne). To moze oslabic wydajnosc przy duzym ruchu.
+    # Gdy ta opcja jest ustawiona na false, sesja Hibernate zamyka sie dokladnie w momencie wyjscia z metody
+    # serwisu (tam gdzie konczy sie @Transactional).
+    # Zaleta: Wydajnosc i czystosc. Polaczenie z baza wraca do puli blyskawicznie.
+    # Zaleta: Architektura. Wymusza na Tobie poprawne projektowanie. Kontroler nie ma
+    # prawa robic zapytan do bazy. Jesli sprobujesz w kontrolerze odwolac sie do niezaladowanej kolekcji
+    # to masz blad.
+    open-in-view: false
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      # Jak te ustawienia pomagaja w pracy z virtual threads? I dlaczego te ustawienia sa produkcyjne?
+
+      # Masz włączone wirtualne wątki — możesz ich mieć miliony. Ale baza danych MySQL nie obsługuje miliona
+      # równoległych połączeń. Każde połączenie z bazą to ciężki zasób po stronie serwera bazodanowego — zajmuje
+      # pamięć, deskryptory plików, wątki po stronie MySQL.
+      #  Milion wirtualnych wątków
+      #         ↓
+      #  Każdy chce połączenia z bazą
+      #         ↓
+      #  MySQL pada przy kilkudziesięciu tysiącach połączeń
+
+      # HikariCP rozwiązuje to przez pulę — zamiast tworzyć nowe połączenie przy każdym żądaniu, utrzymuje ich
+      # stałą liczbę i pożycza je wirtualnym wątkom.
+
+      # Masz miliony wirtualnych wątków, ale tylko 20 połączeń z bazą. Brzmi jak wąskie gardło — ale tak nie jest.
+      # Baza danych jest ograniczeniem sprzętowym, nie softwarowym. 20 połączeń które intensywnie pracują jest
+      # szybsze niż 200 połączeń które się wzajemnie blokują i powodują context switching po stronie MySQL.
+      # Formuła którą często stosuje się w praktyce dla jednego serwisu:
+      # maximum-pool-size = liczba_rdzeni_CPU * 2 + liczba_dysków
+      # Dla serwera 8-rdzeniowego z SSD:
+      # 8 * 2 + 1 = 17 ≈ 20
+      # Przy wirtualnych wątkach zachowanie jest następujące:
+      #  Wirtualny wątek chce połączenia z bazą
+      #    ↓
+      #  Jeśli połączenie dostępne → dostaje je natychmiast
+      #    ↓
+      #  Jeśli wszystkie 20 zajęte → wirtualny wątek jest zawieszany (nie blokuje wątku systemowego!)
+      #    ↓
+      #  Gdy połączenie się zwolni → wirtualny wątek wznawia pracę
+      # To jest kluczowa synergia z wirtualnymi wątkami — czekanie na połączenie nie marnuje wątku systemowego.
+      maximum-pool-size: 20
+
+      # Maksymalny czas oczekiwania na połączenie z puli — 2 sekundy.
+      #  Wątek prosi o połączenie
+      #   ↓
+      #  Wszystkie 20 zajęte → czeka
+      #   ↓
+      #  Po 2 sekundach jeśli nadal brak → SQLTimeoutException → 500
+
+      # Dlaczego 2 sekundy a nie 30? Bo jeśli czekasz 30 sekund na połączenie z bazą to znaczy że coś jest poważnie
+      # nie tak — baza jest przeciążona albo martwa. Szybki timeout pozwala szybko zwrócić błąd zamiast trzymać
+      # użytkownika w nieskończonym oczekiwaniu.
+      connection-timeout: 2000
+
+      # Co 30 sekund HikariCP wysyła lekkie zapytanie (SELECT 1) do każdego połączenia które jest bezczynne w puli.
+      # Problem który rozwiązuje: serwery MySQL, firewalle i load balancery zamykają połączenia które są nieaktywne
+      # przez długi czas. Aplikacja myśli że połączenie jest otwarte, próbuje go użyć i dostaje błąd.
+      #  Połączenie nieaktywne przez 8 minut
+      #    ↓
+      #  Firewall cicho zamknął połączenie
+      #    ↓
+      #  Aplikacja bierze "martwe" połączenie z puli
+      #    ↓
+      #  Błąd przy pierwszym zapytaniu → wyjątek → 500
+      # To ustawienie zapobiega temu — połączenie nigdy nie będzie bezczynne wystarczająco długo żeby firewall
+      # je zamknął.
+      keepalive-time: 30000
+
+      # Maksymalny czas życia połączenia — 30 minut. Po tym czasie HikariCP zamknię połączenie i otworzy nowe, nawet
+      # jeśli połączenie działa poprawnie.
+      # Dlaczego? Kilka powodów:
+      # -> Po pierwsze — wycieki pamięci po stronie MySQL. Długo żyjące połączenia mogą akumulować stan po stronie
+      #    serwera bazodanowego. Cykliczne odświeżanie połączeń czyści ten stan.
+      # -> Po drugie — rotacja hasła lub certyfikatu. Jeśli zmienisz hasło do bazy, stare połączenia dalej działają
+      #    (są już uwierzytelnione) ale nowe nie mogą się połączyć. max-lifetime gwarantuje że stare połączenia zostaną
+      #    zastąpione nowymi w ciągu maksymalnie 30 minut.
+      # -> Po trzecie — failover bazy danych. Jeśli baza przełączy się na replikę, stare połączenia mogą wskazywać na
+      #    martwy węzeł. Nowe połączenia trafią na nowy węzeł.
+      # Ważne: max-lifetime musi być ustawiony na mniej niż wait_timeout po stronie MySQL (domyślnie 8 godzin). Jeśli
+      # MySQL zamknie połączenie przed tym jak HikariCP zdąży je odświeżyć — błąd. Z wartością 30 minut jesteś bardzo
+      # bezpieczny.
+
+      # Podsumowanie:
+
+      # Milion wirtualnych wątków
+      #         ↓
+      # Pula 20 połączeń (maximum-pool-size)
+      #         ↓
+      # Wątek czeka max 2s na połączenie (connection-timeout)
+      #         ↓
+      # Połączenia są utrzymywane przy życiu co 30s (keepalive-time)
+      #         ↓
+      # Połączenia są wymieniane co 30 minut (max-lifetime)
+
+      # Wynik: aplikacja obsługuje tysiące równoległych żądań przez 20 połączeń z bazą, które są zawsze świeże, zawsze
+      # żywe i zawsze zastępowane zanim staną się problemem.
+      max-lifetime: 1800000
+
