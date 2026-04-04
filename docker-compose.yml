@@ -86,11 +86,11 @@ services:
         max-size: "50m"
         max-file: "3"
     networks:
-      - km-network
+      - mr-network
 
 
 volumes:
   payment-mysql:
 
 networks:
-  km-network:
+  mr-network:
