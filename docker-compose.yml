@@ -1,0 +1,96 @@
+services:
+  # --------------------------------------------------------------------------------------------------------------------
+  # PAYMENT MYSQL
+  # --------------------------------------------------------------------------------------------------------------------
+  payment-mysql:
+    image: mysql:9.6.0  # Pinned version for deterministic behavior across environments
+    restart: unless-stopped
+    volumes:
+      - payment-mysql:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${PAYMENT_SERVICE_MYSQL_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${PAYMENT_SERVICE_MYSQL_DB_NAME}
+      MYSQL_USER: ${PAYMENT_SERVICE_MYSQL_DB_USER}
+      MYSQL_PASSWORD: ${PAYMENT_SERVICE_MYSQL_DB_PASSWORD}
+    command: >
+      --default-time-zone='+00:00'
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=${PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE}
+      --max-connections=${PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS}
+    ports:
+      - '${PAYMENT_SERVICE_MYSQL_DB_PORT}:3306'
+
+    # Runbook: hard caps isolate failures; one noisy container must not impact the host.
+    # Memory sizing note: 512M assumes 256M InnoDB buffer pool + runtime overhead headroom.
+    # CPU sizing note: 1 vCPU is acceptable for I/O-bound DB traffic in dev/staging.
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    # Runbook: keep Docker logs bounded (`50m` x `3`) to avoid host disk exhaustion.
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    # Runbook: healthcheck validates schema readiness, not only process/TCP availability.
+    # `$$VAR` prevents Compose-time interpolation; expansion happens inside container shell.
+    healthcheck:
+      test: [ "CMD-SHELL", "mysql -h localhost -u $$MYSQL_USER -p$$MYSQL_PASSWORD -e \"SELECT 1 FROM information_schema.schemata WHERE schema_name='$$MYSQL_DATABASE'\"" ]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - km-network
+
+  # --------------------------------------------------------------------------------------------------------------------
+  # PAYMENT SERVICE
+  # --------------------------------------------------------------------------------------------------------------------
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    restart: on-failure:5
+    ports:
+      - "${PAYMENT_SERVICE_PORT}:${PAYMENT_SERVICE_PORT}"
+    depends_on:
+      payment-mysql:
+        condition: service_healthy
+    environment:
+      SPRING_APPLICATION_NAME: ${PAYMENT_SERVICE_APPLICATION_NAME}
+      SPRING_DATASOURCE_URL: jdbc:mysql://${PAYMENT_SERVICE_MYSQL_DB_HOST}:3306/${PAYMENT_SERVICE_MYSQL_DB_NAME}?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: ${PAYMENT_SERVICE_MYSQL_DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${PAYMENT_SERVICE_MYSQL_DB_PASSWORD}
+      SERVER_PORT: ${PAYMENT_SERVICE_PORT}
+      TPAY_API_URL: ${PAYMENT_SERVICE_TPAY_API_URL}
+      TPAY_API_CLIENT_ID: ${PAYMENT_SERVICE_TPAY_API_CLIENT_ID}
+      TPAY_API_CLIENT_SECRET: ${PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET}
+      TPAY_API_SECURITY_CODE: ${PAYMENT_SERVICE_TPAY_API_SECURITY_CODE}
+      TPAY_APP_NOTIFICATION_URL: ${PAYMENT_SERVICE_TPAY_APP_NOTIFICATION_URL}
+      TPAY_APP_RETURN_SUCCESS_URL: ${PAYMENT_SERVICE_TPAY_APP_RETURN_SUCCESS_URL}
+      TPAY_APP_RETURN_ERROR_URL: ${PAYMENT_SERVICE_TPAY_APP_RETURN_ERROR_URL}
+    # Runbook: 768M provides safe JVM headroom for heap + metaspace + native overhead.
+    # Workload is I/O-bound (DB + payment provider latency), so 1 vCPU is typically enough.
+    # Scale out first; increase per-container CPU only after saturation is observed.
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: "1.0"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+    networks:
+      - km-network
+
+
+volumes:
+  payment-mysql:
+
+networks:
+  km-network:
