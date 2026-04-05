@@ -29,7 +29,7 @@
     <properties>
         <java.version>25</java.version>
         <shedlock.version>6.0.2</shedlock.version>
-        <jacoco.version>0.8.12</jacoco.version>
+        <jacoco.version>0.8.14</jacoco.version>
     </properties>
     <dependencies>
         <dependency>
