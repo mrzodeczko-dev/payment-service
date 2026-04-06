@@ -23,6 +23,7 @@ public interface PaymentRepository {
      */
     Payment save(Payment payment);
 
+
     /**
      * Retrieves a payment by the gateway-side transaction identifier.
      *

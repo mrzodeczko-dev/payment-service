@@ -6,6 +6,12 @@ import com.rzodeczko.paymentservice.domain.model.PaymentStatus;
 import com.rzodeczko.paymentservice.infrastructure.persistence.entity.PaymentEntity;
 import org.springframework.stereotype.Component;
 
+/**
+ * Maps payment aggregates between the domain model and the JPA persistence model.
+ *
+ * <p>This mapper keeps conversion rules in one place so repository adapters can focus on
+ * storage concerns instead of object translation.</p>
+ */
 @Component
 public class PaymentMapper {
 

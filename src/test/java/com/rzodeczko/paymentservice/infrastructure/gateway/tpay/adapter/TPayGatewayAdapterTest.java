@@ -12,10 +12,12 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Instant;
 import java.util.HexFormat;
 import java.util.UUID;
 
@@ -78,6 +80,26 @@ class TPayGatewayAdapterTest {
     }
 
     @Test
+    void registerTransaction_shouldThrowIllegalStateException_whenGatewayResponseIsNull() {
+        // given
+        TestContext context = createContext();
+        UUID orderId = UUID.randomUUID();
+
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/oauth/auth"))
+                .andRespond(withSuccess("{\"access_token\":\"token-1\"}", MediaType.APPLICATION_JSON));
+
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/transactions"))
+                .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
+
+        // when / then
+        assertThatThrownBy(() -> context.adapter.registerTransaction(orderId, new BigDecimal("12.00"), "john@doe.com", "John Doe"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("TPay registration failed");
+
+        context.server.verify();
+    }
+
+    @Test
     void verifyTransactionConfirmed_shouldReturnTrue_whenGatewayStatusIsSuccess() {
         // given
         TestContext context = createContext();
@@ -94,6 +116,26 @@ class TPayGatewayAdapterTest {
 
         // then
         assertThat(confirmed).isTrue();
+        context.server.verify();
+    }
+
+    @Test
+    void verifyTransactionConfirmed_shouldReturnFalse_whenGatewayStatusIsNotSuccess() {
+        // given
+        TestContext context = createContext();
+
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/oauth/auth"))
+                .andRespond(withSuccess("{\"access_token\":\"token-1\"}", MediaType.APPLICATION_JSON));
+
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/transactions/tx-101"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess("{\"status\":\"pending\"}", MediaType.APPLICATION_JSON));
+
+        // when
+        boolean confirmed = context.adapter.verifyTransactionConfirmed("tx-101");
+
+        // then
+        assertThat(confirmed).isFalse();
         context.server.verify();
     }
 
@@ -157,6 +199,68 @@ class TPayGatewayAdapterTest {
         // then
         assertThat(first).isTrue();
         assertThat(second).isTrue();
+        context.server.verify();
+    }
+
+    @Test
+    void verifyTransactionConfirmed_shouldRefreshToken_whenCachedTokenExpired() throws Exception {
+        // given
+        TestContext context = createContext();
+
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/oauth/auth"))
+                .andRespond(withSuccess("{\"access_token\":\"token-1\"}", MediaType.APPLICATION_JSON));
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/transactions/tx-1"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer token-1"))
+                .andRespond(withSuccess("{\"status\":\"success\"}", MediaType.APPLICATION_JSON));
+
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/oauth/auth"))
+                .andRespond(withSuccess("{\"access_token\":\"token-2\"}", MediaType.APPLICATION_JSON));
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/transactions/tx-2"))
+                .andExpect(method(HttpMethod.GET))
+                .andExpect(header("Authorization", "Bearer token-2"))
+                .andRespond(withSuccess("{\"status\":\"success\"}", MediaType.APPLICATION_JSON));
+
+        // when
+        boolean first = context.adapter.verifyTransactionConfirmed("tx-1");
+        setField(context.adapter, "tokenExpiry", Instant.now().minusSeconds(1));
+        boolean second = context.adapter.verifyTransactionConfirmed("tx-2");
+
+        // then
+        assertThat(first).isTrue();
+        assertThat(second).isTrue();
+        context.server.verify();
+    }
+
+    @Test
+    void verifyTransactionConfirmed_shouldThrowIllegalStateException_whenOAuthResponseHasNoToken() {
+        // given
+        TestContext context = createContext();
+
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/oauth/auth"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+
+        // when / then
+        assertThatThrownBy(() -> context.adapter.verifyTransactionConfirmed("tx-no-token"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Failed to obtain TPay access token");
+
+        context.server.verify();
+    }
+
+    @Test
+    void verifyTransactionConfirmed_shouldThrowIllegalStateException_whenOAuthResponseIsNull() {
+        // given
+        TestContext context = createContext();
+
+        context.server.expect(ExpectedCount.once(), requestTo(BASE_URL + "/oauth/auth"))
+                .andRespond(withSuccess("null", MediaType.APPLICATION_JSON));
+
+        // when / then
+        assertThatThrownBy(() -> context.adapter.verifyTransactionConfirmed("tx-null-token"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Failed to obtain TPay access token");
+
         context.server.verify();
     }
 
@@ -239,6 +343,12 @@ class TPayGatewayAdapterTest {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("MD5 algorithm not available", e);
         }
+    }
+
+    private void setField(Object target, String fieldName, Object value) throws Exception {
+        Field field = target.getClass().getDeclaredField(fieldName);
+        field.setAccessible(true);
+        field.set(target, value);
     }
 
     private record TestContext(TPayGatewayAdapter adapter, MockRestServiceServer server) {

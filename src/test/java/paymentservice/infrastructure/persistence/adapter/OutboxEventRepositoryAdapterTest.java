@@ -11,6 +11,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.Instant;
 import java.util.List;
@@ -18,6 +20,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -145,6 +150,50 @@ class OutboxEventRepositoryAdapterTest {
         assertThat(result).isEmpty();
         verify(jpaOutboxEventRepository).findAllByStatus(OutboxEventStatus.PENDING.name());
         verify(outboxEventMapper, never()).toDomain(org.mockito.ArgumentMatchers.any(OutboxEventEntity.class));
+    }
+
+    @Test
+    void findPending_shouldReturnMappedDomainEventsAndUsePageRequestWithAscendingCreatedAtSort() {
+        // given
+        int limit = 5;
+        OutboxEventEntity firstEntity = buildEntity(OutboxEventStatus.PENDING.name());
+        OutboxEventEntity secondEntity = buildEntity(OutboxEventStatus.PENDING.name());
+        OutboxEvent firstDomain = buildDomain(OutboxEventStatus.PENDING);
+        OutboxEvent secondDomain = buildDomain(OutboxEventStatus.PENDING);
+
+        when(jpaOutboxEventRepository.findByStatus(eq(OutboxEventStatus.PENDING.name()), any(PageRequest.class)))
+                .thenReturn(List.of(firstEntity, secondEntity));
+        when(outboxEventMapper.toDomain(firstEntity)).thenReturn(firstDomain);
+        when(outboxEventMapper.toDomain(secondEntity)).thenReturn(secondDomain);
+
+        // when
+        List<OutboxEvent> result = repositoryAdapter.findPending(limit);
+
+        // then
+        assertThat(result).containsExactly(firstDomain, secondDomain);
+        verify(jpaOutboxEventRepository).findByStatus(eq(OutboxEventStatus.PENDING.name()), argThat(pageRequest ->
+                pageRequest.getPageNumber() == 0
+                        && pageRequest.getPageSize() == limit
+                        && pageRequest.getSort().equals(Sort.by("createdAt").ascending())
+        ));
+        verify(outboxEventMapper).toDomain(firstEntity);
+        verify(outboxEventMapper).toDomain(secondEntity);
+    }
+
+    @Test
+    void findPending_shouldReturnEmptyList_whenRepositoryReturnsNoPendingEvents() {
+        // given
+        int limit = 3;
+        when(jpaOutboxEventRepository.findByStatus(eq(OutboxEventStatus.PENDING.name()), any(PageRequest.class)))
+                .thenReturn(List.of());
+
+        // when
+        List<OutboxEvent> result = repositoryAdapter.findPending(limit);
+
+        // then
+        assertThat(result).isEmpty();
+        verify(jpaOutboxEventRepository).findByStatus(eq(OutboxEventStatus.PENDING.name()), any(PageRequest.class));
+        verify(outboxEventMapper, never()).toDomain(any(OutboxEventEntity.class));
     }
 
     private OutboxEventEntity buildEntity(String status) {

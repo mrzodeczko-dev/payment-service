@@ -77,6 +77,7 @@ class PaymentMapperTest {
         assertThat(entity.getRedirectUrl()).isNull();
     }
 
+
     // --- toDomain ---
 
     @Test

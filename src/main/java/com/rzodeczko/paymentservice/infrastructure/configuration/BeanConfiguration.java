@@ -1,6 +1,5 @@
 package com.rzodeczko.paymentservice.infrastructure.configuration;
 
-import com.rzodeczko.paymentservice.application.port.output.PaymentGatewayPort;
 import com.rzodeczko.paymentservice.application.service.PaymentService;
 import com.rzodeczko.paymentservice.domain.repository.OutboxEventRepository;
 import com.rzodeczko.paymentservice.domain.repository.PaymentRepository;
@@ -71,32 +70,15 @@ public class BeanConfiguration {
         return builder -> builder.requestFactory(requestFactory);
     }
 
-    /**
-     * Creates the core {@link PaymentService} business logic component.
-     *
-     * <p>The service coordinates payment lifecycle operations by interacting with:
-     * <ul>
-     *   <li>Payment repository for persistence operations</li>
-     *   <li>Payment gateway port for external payment processing</li>
-     *   <li>Outbox event repository for reliable event publishing</li>
-     * </ul>
-     * </p>
-     *
-     * @param paymentRepository repository for storing and retrieving payment entities
-     * @param paymentGatewayPort adapter for external payment gateway integration
-     * @param outboxEventRepository repository for persisting outbox events used in event-driven architecture
-     * @return configured PaymentService instance
-     */
+
     @Bean
     public PaymentService paymentService(
             PaymentRepository paymentRepository,
-            PaymentGatewayPort paymentGatewayPort,
             OutboxEventRepository outboxEventRepository
     ) {
 
         return new PaymentService(
                 paymentRepository,
-                paymentGatewayPort,
                 outboxEventRepository);
 
     }

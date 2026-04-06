@@ -57,6 +57,7 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
         }
     }
 
+
     /**
      * Retrieves a payment by provider-assigned external transaction identifier.
      *

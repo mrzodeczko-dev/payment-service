@@ -4,6 +4,7 @@ package com.rzodeczko.paymentservice.domain.model;
  * Current lifecycle status of a payment.
  */
 public enum PaymentStatus {
+
     /** Payment has been created and is waiting for provider confirmation. */
     PENDING,
 

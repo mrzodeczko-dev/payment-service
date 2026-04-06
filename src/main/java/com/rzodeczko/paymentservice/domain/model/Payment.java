@@ -148,4 +148,5 @@ public class Payment {
     public boolean isPaid() {
         return this.status == PaymentStatus.PAID;
     }
+
 }

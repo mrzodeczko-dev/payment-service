@@ -179,6 +179,7 @@ class PaymentRepositoryAdapterTest {
         verify(paymentMapper, never()).toDomain(org.mockito.ArgumentMatchers.any(PaymentEntity.class));
     }
 
+
     private Payment buildPayment(PaymentStatus status) {
         return new Payment(
                 UUID.randomUUID(),
