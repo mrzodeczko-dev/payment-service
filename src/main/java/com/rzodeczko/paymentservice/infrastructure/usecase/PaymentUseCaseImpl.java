@@ -115,7 +115,7 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
             throw new InvalidNotificationSignatureException();
         }
 
-        Payment payment = paymentTransactionBoundary.getPaymentByExternalId(notification.trId());
+        Payment payment = paymentTransactionBoundary.getPaymentByExternalId(notification.trCrc());
 
         if (payment.isPaid()) {
             return;

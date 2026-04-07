@@ -16,6 +16,7 @@ public record TPayTransactionRequestDto(
         BigDecimal amount,
         String currency,
         String description,
+        String hiddenDescription,
         String lang,
         PayerDto payer,
         CallbacksDto callbacks

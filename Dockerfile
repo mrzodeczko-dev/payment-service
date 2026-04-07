@@ -1,7 +1,7 @@
 # -----------------------------------------------------------------------------------------------
 # STAGE 1: BUILD
 # -----------------------------------------------------------------------------------------------
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+FROM maven:3.9-eclipse-temurin-25-alpine AS build
 
 ARG APP_VERSION=unknown
 ARG BUILD_DATE=unknown
@@ -27,7 +27,7 @@ RUN java -Djarmode=tools -jar target/*.jar extract --destination target/extracte
 # STAGE 2: RUNTIME
 # -----------------------------------------------------------------------------------------------
 
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 
 ARG APP_VERSION=unknown
 ARG BUILD_DATE=unknown

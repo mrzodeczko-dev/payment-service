@@ -44,14 +44,14 @@ services:
       retries: 15
       start_period: 30s
     networks:
-      - km-network
+      - mr-network
 
   # --------------------------------------------------------------------------------------------------------------------
   # PAYMENT SERVICE
   # --------------------------------------------------------------------------------------------------------------------
   payment-service:
     build:
-      context: ./payment-service
+      context: .
       dockerfile: Dockerfile
     restart: on-failure:5
     ports:

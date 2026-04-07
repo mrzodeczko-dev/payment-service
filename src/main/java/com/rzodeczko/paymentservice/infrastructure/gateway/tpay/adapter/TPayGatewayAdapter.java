@@ -91,6 +91,7 @@ public class TPayGatewayAdapter implements PaymentGatewayPort {
                 amount,
                 "PLN",
                 "ORDER " + orderId,
+                orderId.toString(),
                 "pl",
                 new PayerDto(email, name),
                 new CallbacksDto(
@@ -120,7 +121,7 @@ public class TPayGatewayAdapter implements PaymentGatewayPort {
 
         // TPay returns transactionId here; it will come back as trId in webhook notifications,
         // which is used for findByExternalTransactionId(notification.trId()) lookups.
-        return new GatewayResult(response.transactionPaymentUrl(), response.transactionId());
+        return new GatewayResult(response.transactionPaymentUrl(), orderId.toString());
     }
 
     /**
@@ -150,7 +151,7 @@ public class TPayGatewayAdapter implements PaymentGatewayPort {
                     })
                     .body(TPayTransactionResponseDto.class);
 
-            return response != null && "success".equalsIgnoreCase(response.status());
+            return response != null && "correct".equalsIgnoreCase(response.status());
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
