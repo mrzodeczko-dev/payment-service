@@ -12,17 +12,17 @@
 - [📖 Overview](#overview)
 - [🔄 How It Works (End-to-End Payment Flow)](#how-it-works)
 - [🌐 API Endpoints (Quick Reference)](#api-endpoints)
+- [🚀 Getting Started (Local Environment)](#getting-started)
+- [⚙️ Environment Variables](#environment-variables)
+- [🛠️ Common Issues / Troubleshooting](#common-issues)
 - [🏗️ Architecture](#architecture)
 - [✨ Technical Highlights & Engineering Decisions](#technical-highlights)
 - [💻 Tech Stack](#tech-stack)
 - [🧪 Testing Strategy & Quality Assurance](#testing-strategy)
 - [🛡️ CI/CD Pipeline](#cicd-pipeline)
 - [📊 Observability](#observability)
-- [🔮 Future Roadmap (Architectural Evolution)](#future-roadmap)
-- [🚀 Getting Started (Local Environment)](#getting-started)
-- [⚙️ Environment Variables](#environment-variables)
-- [🛠️ Common Issues / Troubleshooting](#common-issues)
 - [📂 Repository Structure](#repository-structure)
+- [🔮 Future Roadmap (Architectural Evolution)](#future-roadmap)
 - [🤝 Contact](#contact)
 
 <a id="overview"></a>
@@ -154,6 +154,181 @@ Health check:
 
 ```bash
 curl "http://localhost:8081/"
+```
+
+<a id="getting-started"></a>
+## 🚀 Getting Started (Local Environment)
+
+[Back to Table of Contents](#toc)
+
+### Prerequisites
+* Docker & Docker Compose v2+
+* Java 25+ (if running outside containers)
+* Maven 3.9+ (if running outside containers)
+
+### 1. Environment Configuration
+Create a `.env` file in the project root with the following variables:
+
+```bash
+# MySQL
+PAYMENT_SERVICE_MYSQL_DB_ROOT_PASSWORD=your_root_password
+PAYMENT_SERVICE_MYSQL_DB_NAME=payment_db
+PAYMENT_SERVICE_MYSQL_DB_USER=payment_user
+PAYMENT_SERVICE_MYSQL_DB_PASSWORD=your_password
+PAYMENT_SERVICE_MYSQL_DB_PORT=3306
+PAYMENT_SERVICE_MYSQL_DB_HOST=payment-mysql
+PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE=256M
+PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS=100
+
+# Application
+PAYMENT_SERVICE_PORT=8081
+PAYMENT_SERVICE_APPLICATION_NAME=payment-service
+
+# TPay (sandbox: https://panel.sandbox.tpay.com/)
+PAYMENT_SERVICE_TPAY_API_URL=https://openapi.sandbox.tpay.com
+PAYMENT_SERVICE_TPAY_API_CLIENT_ID=your_client_id
+PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET=your_client_secret
+PAYMENT_SERVICE_TPAY_API_SECURITY_CODE=your_security_code
+PAYMENT_SERVICE_TPAY_APP_NOTIFICATION_URL=https://yourdomain.com/api/payments/notifications
+PAYMENT_SERVICE_TPAY_APP_RETURN_SUCCESS_URL=https://yourdomain.com/payment/success
+PAYMENT_SERVICE_TPAY_APP_RETURN_ERROR_URL=https://yourdomain.com/payment/error
+```
+
+> **🌍 Public URL for TPay callbacks:** TPay webhook notifications must reach your app from the internet, so your local service needs a public HTTPS address.
+>
+> You can expose local port `8081` with ngrok:
+>
+> ```bash
+> ngrok http 8081
+> ```
+>
+> Then replace `https://yourdomain.com` in `.env` with your ngrok URL (for example `https://abcd-1234.ngrok-free.app`) in:
+> - `PAYMENT_SERVICE_TPAY_APP_NOTIFICATION_URL`
+> - `PAYMENT_SERVICE_TPAY_APP_RETURN_SUCCESS_URL`
+> - `PAYMENT_SERVICE_TPAY_APP_RETURN_ERROR_URL`
+
+> **💡 TPay Sandbox:** You can register and configure your TPay test credentials at [panel.sandbox.tpay.com](https://panel.sandbox.tpay.com/). The sandbox environment allows full payment flow testing without real transactions.
+
+### 2. Bootstrapping the Infrastructure
+Spin up the database and service with a single command:
+
+```bash
+docker-compose up -d --build
+```
+
+### 3. Verification
+* Payment Service API: `http://localhost:8081`
+* Health Check: `http://localhost:8081/actuator/health`
+* MySQL: `localhost:3306` (via configured port)
+
+### 4. Running Tests Locally
+
+```bash
+mvn verify
+```
+
+Coverage report will be generated at `target/site/jacoco/index.html`.
+
+<a id="environment-variables"></a>
+## ⚙️ Environment Variables
+
+[Back to Table of Contents](#toc)
+
+The project reads values from `.env` (used by Docker Compose). Below is a practical reference for each variable.
+
+> Note: in `docker-compose.yml`, `PAYMENT_SERVICE_TPAY_*` variables are mapped to container-level `TPAY_*` variables consumed by `application.yaml`.
+
+### MySQL
+
+| Variable | Required | Description | Allowed / expected values | Example |
+|---|---|---|---|---|
+| `PAYMENT_SERVICE_MYSQL_DB_HOST` | yes | Hostname of MySQL service used by the app container. | Docker service name or host/IP. | `payment-mysql` |
+| `PAYMENT_SERVICE_MYSQL_DB_PORT` | yes | Host port exposed for MySQL access from your machine. | Free TCP port (usually `3306` or custom). | `3308` |
+| `PAYMENT_SERVICE_MYSQL_DB_NAME` | yes | Database/schema name created at startup. | Valid MySQL schema name. | `payments_db` |
+| `PAYMENT_SERVICE_MYSQL_DB_USER` | yes | Application DB user. | Non-root username. | `user` |
+| `PAYMENT_SERVICE_MYSQL_DB_PASSWORD` | yes | Password for DB user. | Strong secret string. | `user1234` |
+| `PAYMENT_SERVICE_MYSQL_DB_ROOT_PASSWORD` | yes | Root password for MySQL container initialization. | Strong secret string. | `root` |
+| `PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE` | optional (recommended) | InnoDB memory buffer size. | MySQL memory format (`128M`, `256M`, ...). | `256M` |
+| `PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS` | optional (recommended) | Max MySQL concurrent connections. | Positive integer. | `200` |
+
+### Application
+
+| Variable | Required | Description | Allowed / expected values | Example |
+|---|---|---|---|---|
+| `PAYMENT_SERVICE_PORT` | yes | HTTP port exposed by the payment service container. | Free TCP port. | `8081` |
+| `PAYMENT_SERVICE_APPLICATION_NAME` | optional | Spring application name (logging/metadata). | Any non-empty string. | `payment-service` |
+
+### TPay
+
+| Variable | Required | Description | Allowed / expected values | Example |
+|---|---|---|---|---|
+| `PAYMENT_SERVICE_TPAY_API_URL` | yes | Base URL for TPay API. | Sandbox: `https://openapi.sandbox.tpay.com`, Prod: TPay production OpenAPI URL. | `https://openapi.sandbox.tpay.com` |
+| `PAYMENT_SERVICE_TPAY_API_CLIENT_ID` | yes | OAuth client identifier used to authenticate against TPay API. | Value generated in TPay panel for your merchant app. | `...` |
+| `PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET` | yes | OAuth client secret for TPay API token exchange. | Secret generated in TPay panel. | `...` |
+| `PAYMENT_SERVICE_TPAY_API_SECURITY_CODE` | yes | Merchant security code used to verify webhook signature (`md5sum`). | Secret value from TPay panel, exact match required. | `...` |
+| `PAYMENT_SERVICE_TPAY_APP_NOTIFICATION_URL` | yes | Public webhook endpoint called by TPay after payment status changes. | Public HTTPS URL reachable from internet. | `https://<domain>/payments/notification` |
+| `PAYMENT_SERVICE_TPAY_APP_RETURN_SUCCESS_URL` | yes | URL where customer is redirected after successful payment flow. | Public HTTPS URL. | `https://<domain>/payments/success` |
+| `PAYMENT_SERVICE_TPAY_APP_RETURN_ERROR_URL` | yes | URL where customer is redirected after failed/cancelled payment flow. | Public HTTPS URL. | `https://<domain>/payments/error` |
+
+### What is `PAYMENT_SERVICE_TPAY_API_SECURITY_CODE`?
+
+- It is the **merchant security code** used to validate TPay notification signature (`md5sum`) server-side.
+- If this value is wrong, webhook verification fails and notifications are rejected (for example `FALSE` / invalid signature errors).
+- Where to find it in TPay panel: merchant settings related to notifications/security (in sandbox panel, under notification security configuration).
+
+### Required vs optional (quick summary)
+
+- **Required in practice:** all `PAYMENT_SERVICE_TPAY_*`, DB credentials/host/name/port, and `PAYMENT_SERVICE_PORT`.
+- **Optional/tunable:** `PAYMENT_SERVICE_APPLICATION_NAME`, `PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE`, `PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS`.
+
+<a id="common-issues"></a>
+## 🛠️ Common Issues / Troubleshooting
+
+[Back to Table of Contents](#toc)
+
+### 1) Docker does not start
+
+- **Symptoms:** `docker-compose up` fails, containers exit immediately, or build hangs.
+- **Most common causes:** Port conflict, stale containers/images, invalid `.env` values.
+- **What to do:**
+
+```bash
+docker compose ps
+docker compose config
+docker compose down
+docker compose up -d --build
+```
+
+If ports are already in use, change host ports in `.env`/`docker-compose.yml` (for example app or MySQL port mappings).
+
+### 2) Database is not ready
+
+- **Symptoms:** App logs show DB connection errors at startup (`Communications link failure`, `Connection refused`).
+- **Most common cause:** MySQL container is still booting while app tries to connect.
+- **What to do:**
+
+```bash
+docker compose ps
+docker compose logs payment-mysql --tail 200
+docker compose logs payment-service --tail 200
+```
+
+Verify `PAYMENT_SERVICE_MYSQL_*` values in `.env` (host, port, db name, user, password) and wait until MySQL is healthy before retrying app startup.
+
+### 3) TPay returns 401 (Unauthorized)
+
+- **Symptoms:** Payment creation/authentication call fails with HTTP `401`.
+- **Most common causes:** Wrong `client_id`/`client_secret`, mismatched sandbox vs production URL, revoked/rotated credentials.
+- **What to do:**
+
+1. Validate `PAYMENT_SERVICE_TPAY_API_CLIENT_ID` and `PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET`.
+2. Ensure URL/environment match (`sandbox` credentials with sandbox API URL).
+3. Confirm credentials in TPay panel and rotate secret if needed.
+4. Restart service after `.env` changes.
+
+```bash
+docker compose up -d --build
+docker compose logs payment-service --tail 200
 ```
 
 <a id="architecture"></a>
@@ -300,182 +475,6 @@ The service exposes health and readiness endpoints via **Spring Boot Actuator**:
 * **Custom Health Check:** `GET /health` — application-level health check controller returning service status.
 * **JVM Tuning:** Container-aware JVM settings (`-XX:+UseContainerSupport`, `-XX:MaxRAMPercentage=75.0`, G1GC) ensure stable memory behavior under constrained Docker resources.
 
-<a id="future-roadmap"></a>
-## 🔮 Future Roadmap (Architectural Evolution)
-
-[Back to Table of Contents](#toc)
-
-Planned iterations for system evolution include:
-
-* **Liquibase:** Replacing `schema.sql` with versioned, rollback-capable database migrations for safe multi-environment deployments.
-* **Testcontainers:** Ephemeral MySQL instances in integration tests via [Testcontainers](https://testcontainers.com/) — fully isolated, reproducible runs without external DB dependencies.
-* **GCP Cloud Run + IAP:** Replacing ngrok with [Cloud Run](https://cloud.google.com/run) and Identity-Aware Proxy for secure, stable webhook exposure during development.
-* **Event-Driven Outbox:** Transitioning from polling (`OutboxProcessor`) to a message broker (Kafka/RabbitMQ) for lower latency event dispatch.
-* **OpenAPI/Swagger UI:** Interactive API documentation and contract-first development.
-* **Kubernetes Manifests:** Production-grade K8s Deployments, Services, ConfigMaps, and Secrets.
-
-<a id="getting-started"></a>
-## 🚀 Getting Started (Local Environment)
-
-[Back to Table of Contents](#toc)
-
-### Prerequisites
-* Docker & Docker Compose v2+
-* Java 25+ (if running outside containers)
-* Maven 3.9+ (if running outside containers)
-
-### 1. Environment Configuration
-Create a `.env` file in the project root with the following variables:
-
-```bash
-# MySQL
-PAYMENT_SERVICE_MYSQL_DB_ROOT_PASSWORD=your_root_password
-PAYMENT_SERVICE_MYSQL_DB_NAME=payment_db
-PAYMENT_SERVICE_MYSQL_DB_USER=payment_user
-PAYMENT_SERVICE_MYSQL_DB_PASSWORD=your_password
-PAYMENT_SERVICE_MYSQL_DB_PORT=3306
-PAYMENT_SERVICE_MYSQL_DB_HOST=payment-mysql
-PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE=256M
-PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS=100
-
-# Application
-PAYMENT_SERVICE_PORT=8081
-PAYMENT_SERVICE_APPLICATION_NAME=payment-service
-
-# TPay (sandbox: https://panel.sandbox.tpay.com/)
-PAYMENT_SERVICE_TPAY_API_URL=https://openapi.sandbox.tpay.com
-PAYMENT_SERVICE_TPAY_API_CLIENT_ID=your_client_id
-PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET=your_client_secret
-PAYMENT_SERVICE_TPAY_API_SECURITY_CODE=your_security_code
-PAYMENT_SERVICE_TPAY_APP_NOTIFICATION_URL=https://yourdomain.com/api/payments/notifications
-PAYMENT_SERVICE_TPAY_APP_RETURN_SUCCESS_URL=https://yourdomain.com/payment/success
-PAYMENT_SERVICE_TPAY_APP_RETURN_ERROR_URL=https://yourdomain.com/payment/error
-```
-
-> **💡 TPay Sandbox:** You can register and configure your TPay test credentials at [panel.sandbox.tpay.com](https://panel.sandbox.tpay.com/). The sandbox environment allows full payment flow testing without real transactions.
-
-### 2. Bootstrapping the Infrastructure
-Spin up the database and service with a single command:
-
-```bash
-docker-compose up -d --build
-```
-
-### 3. Verification
-* Payment Service API: `http://localhost:8081`
-* Health Check: `http://localhost:8081/actuator/health`
-* MySQL: `localhost:3306` (via configured port)
-
-### 4. Running Tests Locally
-
-```bash
-mvn verify
-```
-
-Coverage report will be generated at `target/site/jacoco/index.html`.
-
-<a id="environment-variables"></a>
-## ⚙️ Environment Variables
-
-[Back to Table of Contents](#toc)
-
-The project reads values from `.env` (used by Docker Compose). Below is a practical reference for each variable.
-
-> Note: in `docker-compose.yml`, `PAYMENT_SERVICE_TPAY_*` variables are mapped to container-level `TPAY_*` variables consumed by `application.yaml`.
-
-### MySQL
-
-| Variable | Required | Description | Allowed / expected values | Example |
-|---|---|---|---|---|
-| `PAYMENT_SERVICE_MYSQL_DB_HOST` | yes | Hostname of MySQL service used by the app container. | Docker service name or host/IP. | `payment-mysql` |
-| `PAYMENT_SERVICE_MYSQL_DB_PORT` | yes | Host port exposed for MySQL access from your machine. | Free TCP port (usually `3306` or custom). | `3308` |
-| `PAYMENT_SERVICE_MYSQL_DB_NAME` | yes | Database/schema name created at startup. | Valid MySQL schema name. | `payments_db` |
-| `PAYMENT_SERVICE_MYSQL_DB_USER` | yes | Application DB user. | Non-root username. | `user` |
-| `PAYMENT_SERVICE_MYSQL_DB_PASSWORD` | yes | Password for DB user. | Strong secret string. | `user1234` |
-| `PAYMENT_SERVICE_MYSQL_DB_ROOT_PASSWORD` | yes | Root password for MySQL container initialization. | Strong secret string. | `root` |
-| `PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE` | optional (recommended) | InnoDB memory buffer size. | MySQL memory format (`128M`, `256M`, ...). | `256M` |
-| `PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS` | optional (recommended) | Max MySQL concurrent connections. | Positive integer. | `200` |
-
-### Application
-
-| Variable | Required | Description | Allowed / expected values | Example |
-|---|---|---|---|---|
-| `PAYMENT_SERVICE_PORT` | yes | HTTP port exposed by the payment service container. | Free TCP port. | `8081` |
-| `PAYMENT_SERVICE_APPLICATION_NAME` | optional | Spring application name (logging/metadata). | Any non-empty string. | `payment-service` |
-
-### TPay
-
-| Variable | Required | Description | Allowed / expected values | Example |
-|---|---|---|---|---|
-| `PAYMENT_SERVICE_TPAY_API_URL` | yes | Base URL for TPay API. | Sandbox: `https://openapi.sandbox.tpay.com`, Prod: TPay production OpenAPI URL. | `https://openapi.sandbox.tpay.com` |
-| `PAYMENT_SERVICE_TPAY_API_CLIENT_ID` | yes | OAuth client identifier used to authenticate against TPay API. | Value generated in TPay panel for your merchant app. | `...` |
-| `PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET` | yes | OAuth client secret for TPay API token exchange. | Secret generated in TPay panel. | `...` |
-| `PAYMENT_SERVICE_TPAY_API_SECURITY_CODE` | yes | Merchant security code used to verify webhook signature (`md5sum`). | Secret value from TPay panel, exact match required. | `...` |
-| `PAYMENT_SERVICE_TPAY_APP_NOTIFICATION_URL` | yes | Public webhook endpoint called by TPay after payment status changes. | Public HTTPS URL reachable from internet. | `https://<domain>/payments/notification` |
-| `PAYMENT_SERVICE_TPAY_APP_RETURN_SUCCESS_URL` | yes | URL where customer is redirected after successful payment flow. | Public HTTPS URL. | `https://<domain>/payments/success` |
-| `PAYMENT_SERVICE_TPAY_APP_RETURN_ERROR_URL` | yes | URL where customer is redirected after failed/cancelled payment flow. | Public HTTPS URL. | `https://<domain>/payments/error` |
-
-### What is `PAYMENT_SERVICE_TPAY_API_SECURITY_CODE`?
-
-- It is the **merchant security code** used to validate TPay notification signature (`md5sum`) server-side.
-- If this value is wrong, webhook verification fails and notifications are rejected (for example `FALSE` / invalid signature errors).
-- Where to find it in TPay panel: merchant settings related to notifications/security (in sandbox panel, under notification security configuration).
-
-### Required vs optional (quick summary)
-
-- **Required in practice:** all `PAYMENT_SERVICE_TPAY_*`, DB credentials/host/name/port, and `PAYMENT_SERVICE_PORT`.
-- **Optional/tunable:** `PAYMENT_SERVICE_APPLICATION_NAME`, `PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE`, `PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS`.
-
-<a id="common-issues"></a>
-## 🛠️ Common Issues / Troubleshooting
-
-[Back to Table of Contents](#toc)
-
-### 1) Docker does not start
-
-- **Symptoms:** `docker-compose up` fails, containers exit immediately, or build hangs.
-- **Most common causes:** Port conflict, stale containers/images, invalid `.env` values.
-- **What to do:**
-
-```bash
-docker compose ps
-docker compose config
-docker compose down
-docker compose up -d --build
-```
-
-If ports are already in use, change host ports in `.env`/`docker-compose.yml` (for example app or MySQL port mappings).
-
-### 2) Database is not ready
-
-- **Symptoms:** App logs show DB connection errors at startup (`Communications link failure`, `Connection refused`).
-- **Most common cause:** MySQL container is still booting while app tries to connect.
-- **What to do:**
-
-```bash
-docker compose ps
-docker compose logs payment-mysql --tail 200
-docker compose logs payment-service --tail 200
-```
-
-Verify `PAYMENT_SERVICE_MYSQL_*` values in `.env` (host, port, db name, user, password) and wait until MySQL is healthy before retrying app startup.
-
-### 3) TPay returns 401 (Unauthorized)
-
-- **Symptoms:** Payment creation/authentication call fails with HTTP `401`.
-- **Most common causes:** Wrong `client_id`/`client_secret`, mismatched sandbox vs production URL, revoked/rotated credentials.
-- **What to do:**
-
-1. Validate `PAYMENT_SERVICE_TPAY_API_CLIENT_ID` and `PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET`.
-2. Ensure URL/environment match (`sandbox` credentials with sandbox API URL).
-3. Confirm credentials in TPay panel and rotate secret if needed.
-4. Restart service after `.env` changes.
-
-```bash
-docker compose up -d --build
-docker compose logs payment-service --tail 200
-```
-
 <a id="repository-structure"></a>
 ## 📂 Repository Structure
 
@@ -518,6 +517,20 @@ docker compose logs payment-service --tail 200
 ├── Dockerfile                            # Multi-stage Docker build
 └── pom.xml                               # Maven build configuration
 ```
+
+<a id="future-roadmap"></a>
+## 🔮 Future Roadmap (Architectural Evolution)
+
+[Back to Table of Contents](#toc)
+
+Planned iterations for system evolution include:
+
+* **Liquibase:** Replacing `schema.sql` with versioned, rollback-capable database migrations for safe multi-environment deployments.
+* **Testcontainers:** Ephemeral MySQL instances in integration tests via [Testcontainers](https://testcontainers.com/) — fully isolated, reproducible runs without external DB dependencies.
+* **GCP Cloud Run + IAP:** Replacing ngrok with [Cloud Run](https://cloud.google.com/run) and Identity-Aware Proxy for secure, stable webhook exposure during development.
+* **Event-Driven Outbox:** Transitioning from polling (`OutboxProcessor`) to a message broker (Kafka/RabbitMQ) for lower latency event dispatch.
+* **OpenAPI/Swagger UI:** Interactive API documentation and contract-first development.
+* **Kubernetes Manifests:** Production-grade K8s Deployments, Services, ConfigMaps, and Secrets.
 
 <a id="contact"></a>
 ## 🤝 Contact

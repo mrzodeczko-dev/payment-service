@@ -18,8 +18,6 @@ services:
       --collation-server=utf8mb4_unicode_ci
       --innodb-buffer-pool-size=${PAYMENT_SERVICE_MYSQL_INNODB_BUFFER_POOL_SIZE}
       --max-connections=${PAYMENT_SERVICE_MYSQL_MAX_CONNECTIONS}
-    ports:
-      - '${PAYMENT_SERVICE_MYSQL_DB_PORT}:3306'
 
     # Runbook: hard caps isolate failures; one noisy container must not impact the host.
     # Memory sizing note: 512M assumes 256M InnoDB buffer pool + runtime overhead headroom.
