@@ -230,15 +230,15 @@ docker-compose up -d --build
 The repository includes `openapi.template.yaml`. The Swagger UI container renders runtime `openapi.yaml` from this template using `.env`.
 
 ```powershell
-docker compose --profile docs up -d swagger-ui-payment
+docker compose --profile docs up -d --build
 ```
 
 Then open:
 
 - `http://localhost:{SWAGGER_UI_PORT}` to access the interactive API documentation
 
-> Note: `PAYMENT_SERVICE_OPENAPI_BASE_URL` from `.env` is passed to the Swagger container and injected into `servers[0].url` at runtime.
-> Swagger UI port is controlled by `.env` via `SWAGGER_UI_PORT`.
+> Note: `SWAGGER_UI_PORT` from `.env` is passed to the Swagger container and injected into `servers[0].url` at runtime.
+
 
 ### 5. Running Tests Locally
 
@@ -548,10 +548,7 @@ Planned iterations for system evolution include:
 
 * **Liquibase:** Replacing `schema.sql` with versioned, rollback-capable database migrations for safe multi-environment deployments.
 * **Testcontainers:** Ephemeral MySQL instances in integration tests via [Testcontainers](https://testcontainers.com/) — fully isolated, reproducible runs without external DB dependencies.
-* **GCP Cloud Run + IAP:** Replacing ngrok with [Cloud Run](https://cloud.google.com/run) and Identity-Aware Proxy for secure, stable webhook exposure during development.
 * **Event-Driven Outbox:** Transitioning from polling (`OutboxProcessor`) to a message broker (Kafka/RabbitMQ) for lower latency event dispatch.
-* **OpenAPI/Swagger UI:** Interactive API documentation and contract-first development.
-* **Kubernetes Manifests:** Production-grade K8s Deployments, Services, ConfigMaps, and Secrets.
 
 <a id="contact"></a>
 ## 🤝 Contact
