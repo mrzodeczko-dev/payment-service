@@ -436,8 +436,6 @@ graph TD
 
 [Back to Table of Contents](#toc)
 
-The project employs a robust testing pyramid with clear separation between unit and integration tests:
-
 * **Unit Tests (18 classes):** Pure domain and infrastructure logic tested in isolation — covering domain models (`Payment`, `OutboxEvent`), custom exceptions, mappers, adapters, and the `OutboxProcessor`/`OutboxEventSender` pipeline. All tests use JUnit 5 and Mockito.
 * **Code Coverage Gate:** JaCoCo enforces a strict minimum of **80% instruction coverage** at the bundle level — the build fails if coverage drops below the threshold.
 
@@ -481,7 +479,7 @@ The project uses **GitHub Actions** for Continuous Integration with automated qu
 - Upload coverage to Codecov (fail_ci_if_error: true)
 ```
 
-* **Build:** Maven `verify` phase runs all unit and integration tests with JaCoCo instrumentation.
+* **Build:** Maven `verify` phase runs all unit tests with JaCoCo instrumentation.
 * **Coverage Reporting:** JaCoCo HTML report is uploaded as a build artifact; XML report is pushed to Codecov for trend tracking and PR annotations.
 * **Quality Gate:** Both JaCoCo (80% minimum) and Codecov (`fail_ci_if_error: true`) act as hard gates — a failing coverage check blocks the pipeline.
 
@@ -532,7 +530,7 @@ The service exposes health and readiness endpoints via **Spring Boot Actuator**:
 │   │   └── resources/
 │   │       ├── application.yaml          # Application configuration
 │   │       └── schema.sql                # ShedLock table schema
-│   └── test/                             # Unit & integration tests
+│   └── test/                             # Unit tests
 ├── .env                                  # Environment variables
 ├── docker-compose.yml                    # Local container orchestration
 ├── Dockerfile                            # Multi-stage Docker build
