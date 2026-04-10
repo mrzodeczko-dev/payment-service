@@ -1,0 +1,28 @@
+# Placeholder values matching ${...} keys from application.yaml
+SPRING_APPLICATION_NAME: payment-service-test
+SERVER_PORT: 8081
+SPRING_DATASOURCE_URL: "jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
+SPRING_DATASOURCE_USERNAME: sa
+SPRING_DATASOURCE_PASSWORD: ""
+TPAY_API_URL: https://mock.tpay.test
+TPAY_API_CLIENT_ID: test-client-id
+TPAY_API_CLIENT_SECRET: test-client-secret
+TPAY_API_SECURITY_CODE: test-security-code
+TPAY_APP_NOTIFICATION_URL: http://localhost/payments/notification
+TPAY_APP_RETURN_SUCCESS_URL: http://localhost/payments/success
+TPAY_APP_RETURN_ERROR_URL: http://localhost/payments/error
+SWAGGER_UI_PORT: 9000
+
+spring:
+  application:
+    name: payment-service-test
+  datasource:
+    url: jdbc:h2:mem:test
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  liquibase:
+    enabled: false
