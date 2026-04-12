@@ -1,4 +1,4 @@
-name: CI
+name: ci/cd pipeline
 
 on:
   push:
@@ -47,3 +47,41 @@ jobs:
           fail_ci_if_error: true
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  deploy-to-ubuntu:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: build-and-test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create archive
+        run: |
+          tar \
+            --exclude=.git \
+            --exclude=.github \
+            --exclude=target \
+            -czf app.tar.gz .
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Upload app to server
+        run: |
+          scp app.tar.gz ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/tmp/app.tar.gz
+
+      - name: Deploy on server
+        run: |
+          ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} '
+            APP_DIR="/home/ubuntu/applications/payments-service"
+            mkdir -p "$APP_DIR"
+            tar -xzf /tmp/app.tar.gz -C "$APP_DIR"
+            cd "$APP_DIR"
+            docker compose down || true
+            docker compose up -d --build
