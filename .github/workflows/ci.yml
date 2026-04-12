@@ -60,6 +60,7 @@ jobs:
       - name: Create archive
         run: |
           tar \
+            --warning=no-file-changed \
             --exclude=.git \
             --exclude=.github \
             --exclude=target \
@@ -84,4 +85,4 @@ jobs:
             tar -xzf /tmp/app.tar.gz -C "$APP_DIR"
             cd "$APP_DIR"
             docker compose down || true
-            docker compose up -d --build
+            docker compose --profile docs up -d --build
