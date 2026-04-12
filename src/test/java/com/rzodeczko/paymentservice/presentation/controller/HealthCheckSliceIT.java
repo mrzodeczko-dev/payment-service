@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(value = HealthCheckController.class)
 @ActiveProfiles("test")
-public class HealthCheckSliceTest {
+public class HealthCheckSliceIT {
 
     @Autowired
     private MockMvc mockMvc;
