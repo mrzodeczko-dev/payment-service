@@ -79,9 +79,20 @@ jobs:
 
       - name: Deploy on server
         run: |
-          ssh gcp-vm-instance '
-            APP_DIR="/home/mr/applications/payments-service"
-            cd "$APP_DIR"
+          ssh gcp-vm-instance "
+            export PAYMENT_SERVICE_MYSQL_DB_PASSWORD='${{ secrets.PAYMENT_SERVICE_MYSQL_DB_PASSWORD }}'
+            export PAYMENT_SERVICE_MYSQL_DB_USER='${{ secrets.PAYMENT_SERVICE_MYSQL_DB_USER }}'
+            export PAYMENT_SERVICE_TPAY_API_CLIENT_ID='${{ secrets.PAYMENT_SERVICE_TPAY_API_CLIENT_ID }}'
+            export PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET='${{ secrets.PAYMENT_SERVICE_TPAY_API_CLIENT_SECRET }}'
+            export PAYMENT_SERVICE_TPAY_API_SECURITY_CODE='${{ secrets.PAYMENT_SERVICE_TPAY_API_SECURITY_CODE }}'
+            export PAYMENT_SERVICE_TPAY_APP_NOTIFICATION_URL='${{ secrets.PAYMENT_SERVICE_TPAY_APP_NOTIFICATION_URL }}'
+            export PAYMENT_SERVICE_TPAY_APP_RETURN_ERROR_URL='${{ secrets.PAYMENT_SERVICE_TPAY_APP_RETURN_ERROR_URL }}'
+            export PAYMENT_SERVICE_TPAY_APP_RETURN_SUCCESS_URL='${{ secrets.PAYMENT_SERVICE_TPAY_APP_RETURN_SUCCESS_URL }}'
+            APP_DIR='/home/mr/applications/payments-service'
+            cd \"\$APP_DIR\"
+
+            envsubst < .env.template > .env
+
             docker compose down || true
-            docker compose --profile docs up -d --build
-          '
+            docker compose --env-file .env up -d --build
+          "
