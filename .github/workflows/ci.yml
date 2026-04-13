@@ -47,7 +47,7 @@ jobs:
           fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  deploy-to-ubuntu:
+  deploy-to-gcp-vm:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     needs: build-and-test
     runs-on: ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
           cat >> ~/.ssh/config <<EOF
-          Host my-ubuntu
+          Host gcp-vm-instance
             HostName ${{ secrets.SSH_HOST }}
             User ${{ secrets.SSH_USER }}
             IdentityFile ~/.ssh/id_rsa
@@ -75,13 +75,13 @@ jobs:
             --exclude='.git' \
             --exclude='.github' \
             --exclude='target' \
-            ./ my-ubuntu:/home/ubuntu/applications/payments-service/
+            ./ gcp-vm-instance:/home/mr/applications/payments-service/
 
       - name: Deploy on server
         run: |
-          ssh my-ubuntu '
-            APP_DIR="/home/ubuntu/applications/payments-service"
+          ssh gcp-vm-instance '
+            APP_DIR="/home/mr/applications/payments-service"
             cd "$APP_DIR"
             docker compose down || true
-            docker compose up -d --build
+            docker compose --profile docs up -d --build
           '
