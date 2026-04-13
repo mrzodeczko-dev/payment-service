@@ -6,13 +6,13 @@
 
     <changeSet id="2" author="codernoone" logicalFilePath="db/changelog/db.changelog-master.xml">
         <createTable tableName="outbox_events">
-            <column name="id" type="BINARY(16)">
+            <column name="id" type="CHAR(36)">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="order_id" type="BINARY(16)">
+            <column name="order_id" type="CHAR(36)">
                 <constraints nullable="false"/>
             </column>
-            <column name="payment_id" type="BINARY(16)">
+            <column name="payment_id" type="CHAR(36)">
                 <constraints nullable="false"/>
             </column>
             <column name="status" type="VARCHAR(20)">
