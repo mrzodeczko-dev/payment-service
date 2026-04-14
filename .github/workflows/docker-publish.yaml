@@ -37,5 +37,5 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: |
-            ${{ vars.DOCKERHUB_USERNAME }}/twoja-nazwa-obrazu:${{ inputs.version }}
-            ${{ vars.DOCKERHUB_USERNAME }}/twoja-nazwa-obrazu:latest
+            ${{ vars.DOCKERHUB_USERNAME }}/payments-service:${{ inputs.version }}
+            ${{ vars.DOCKERHUB_USERNAME }}/payments-service:latest
