@@ -405,4 +405,4 @@ Planned improvements include:
 ## 🤝 Contact
 
 Designed and implemented by **Michał Rzodeczko**.  
-GitHub: [CoderNoOne](https://github.com/CoderNoOne)
+GitHub: [mrzodeczko-dev](https://github.com/mrzodeczko-dev)
