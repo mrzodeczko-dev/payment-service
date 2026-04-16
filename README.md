@@ -1,9 +1,9 @@
 # 🚀 Payment Service - Hexagonal Payment Processing Platform
 
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
-| [![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/)
-| [![Resilience4j](https://img.shields.io/badge/Resilience4j-2.4.0-informational.svg)](https://resilience4j.readme.io/)
-| [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
+ [![Java](https://img.shields.io/badge/Java-25-orange.svg)](https://openjdk.org/)
+ [![Resilience4j](https://img.shields.io/badge/Resilience4j-2.4.0-informational.svg)](https://resilience4j.readme.io/)
+ [![Docker](https://img.shields.io/badge/Docker-Ready-blue.svg)](https://www.docker.com/)
 [![codecov](https://codecov.io/gh/CoderNoOne/payment-service/branch/master/graph/badge.svg)](https://codecov.io/gh/CoderNoOne/payment-service)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
