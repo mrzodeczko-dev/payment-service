@@ -50,7 +50,7 @@ public class ExternalServiceNotificationAdapter implements NotificationPort {
                     .toBodilessEntity();
             log.info("External service notified. orderId={}, paymentId={}", orderId, paymentId);
         } catch (RestClientException e) {
-            throw new IllegalStateException("Failed to notify external service with orderId: " + orderId, e)
+            throw new IllegalStateException("Failed to notify external service with orderId: " + orderId, e);
         }
     }
 }

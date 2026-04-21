@@ -628,7 +628,7 @@ class TPayGatewayAdapterTest {
     private TPayProperties tPayProperties() {
         return new TPayProperties(
                 new TPayProperties.Api(BASE_URL, "client-id", "client-secret", "sec-123"),
-                new TPayProperties.App("https://app.test/notify", "https://app.test/success", "https://app.test/error")
+                new TPayProperties.App("https://app.test/notify", "https://app.test/success", "https://app.test/error", "https://app.test/external")
         );
     }
 
