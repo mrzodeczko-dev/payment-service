@@ -162,7 +162,7 @@
 
     <repositories>
         <repository>
-            <id>github-order-service</id>
+            <id>github</id>
             <url>https://maven.pkg.github.com/mrzodeczko-dev/order-service</url>
             <snapshots>
                 <enabled>false</enabled>
