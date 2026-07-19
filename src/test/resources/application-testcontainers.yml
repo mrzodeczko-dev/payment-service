@@ -1,0 +1,51 @@
+spring:
+  application:
+    name: payment-service-tc
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.xml
+    enabled: true
+
+tpay:
+  api:
+    url: https://mock.tpay.test
+    client-id: test-client-id
+    client-secret: test-client-secret
+    security-code: test-security-code
+  app:
+    notification-url: http://localhost/payments/notification
+    return-success-url: http://localhost/payments/success
+    return-error-url: http://localhost/payments/error
+    external-service-url: http://localhost:9999
+
+resilience4j:
+  retry:
+    instances:
+      tpay-access-token:
+        max-attempts: 1
+      tpay-verification:
+        max-attempts: 1
+  circuitbreaker:
+    instances:
+      tpay-access-token:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 1s
+      tpay-verification:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 1s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

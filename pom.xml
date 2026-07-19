@@ -14,6 +14,13 @@
     <name>payment-service</name>
     <description>payment-service</description>
 
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <url>https://maven.pkg.github.com/mrzodeczko-dev/payment-service</url>
+        </repository>
+    </distributionManagement>
+
     <properties>
         <java.version>25</java.version>
         <shedlock.version>6.0.2</shedlock.version>
@@ -22,7 +29,21 @@
         <openapi.version>3.0.1</openapi.version>
         <failsafe.version>3.2.5</failsafe.version>
         <surefire.version>3.2.5</surefire.version>
+        <spring-cloud-contract.version>5.0.3</spring-cloud-contract.version>
+        <testcontainers.version>2.0.5</testcontainers.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -71,7 +92,12 @@
             <artifactId>resilience4j-spring-boot4</artifactId>
             <version>${resilience4j.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>spring-mock-mvc</artifactId>
+            <version>6.0.0</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>net.javacrumbs.shedlock</groupId>
             <artifactId>shedlock-spring</artifactId>
@@ -110,7 +136,36 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-contract-verifier</artifactId>
+            <version>${spring-cloud-contract.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-contract-stub-runner</artifactId>
+            <version>${spring-cloud-contract.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>github-order-service</id>
+            <url>https://maven.pkg.github.com/mrzodeczko-dev/order-service</url>
+        </repository>
+    </repositories>
 
     <build>
         <plugins>
@@ -140,6 +195,18 @@
             </plugin>
 
 
+            <plugin>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-contract-maven-plugin</artifactId>
+                <version>${spring-cloud-contract.version}</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <baseClassForTests>
+                        com.rzodeczko.paymentservice.contract.BaseContractTest
+                    </baseClassForTests>
+                    <testFramework>JUNIT5</testFramework>
+                </configuration>
+            </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire.version}</version>

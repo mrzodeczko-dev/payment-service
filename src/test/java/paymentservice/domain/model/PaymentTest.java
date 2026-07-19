@@ -221,4 +221,79 @@ class PaymentTest {
         // Act & Assert
         assertThat(payment.isPaid()).isFalse();
     }
+
+    // ─── refund() ──────────────────────────────────────────────────────────────
+
+    @Test
+    void testRefundPayment_FromPaid() {
+        // Arrange
+        Payment payment = Payment.create(
+                UUID.randomUUID(),
+                new BigDecimal("99.99"),
+                "tr_123",
+                "https://example.com"
+        );
+        payment.confirm();
+
+        // Act
+        payment.refund();
+
+        // Assert
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(payment.isPaid()).isFalse();
+    }
+
+    @Test
+    void testRefundPayment_FromPending() {
+        // Arrange
+        Payment payment = Payment.create(
+                UUID.randomUUID(),
+                new BigDecimal("99.99"),
+                "tr_123",
+                "https://example.com"
+        );
+
+        // Act
+        payment.refund();
+
+        // Assert
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+    }
+
+    @Test
+    void testRefundPayment_ThrowsException_WhenFailed() {
+        // Arrange
+        Payment payment = Payment.create(
+                UUID.randomUUID(),
+                new BigDecimal("99.99"),
+                "tr_123",
+                "https://example.com"
+        );
+        payment.fail();
+
+        // Act & Assert
+        assertThatIllegalArgumentException()
+                .isThrownBy(payment::refund)
+                .withMessageContaining("Cannot refund payment in status")
+                .withMessageContaining("Expected: PAID or PENDING");
+    }
+
+    @Test
+    void testRefundPayment_ThrowsException_WhenAlreadyRefunded() {
+        // Arrange
+        Payment payment = Payment.create(
+                UUID.randomUUID(),
+                new BigDecimal("99.99"),
+                "tr_123",
+                "https://example.com"
+        );
+        payment.confirm();
+        payment.refund();
+
+        // Act & Assert
+        assertThatIllegalArgumentException()
+                .isThrownBy(payment::refund)
+                .withMessageContaining("Cannot refund payment in status")
+                .withMessageContaining("Expected: PAID or PENDING");
+    }
 }
