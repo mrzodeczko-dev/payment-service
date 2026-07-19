@@ -202,7 +202,7 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-contract-maven-plugin</artifactId>
                 <version>${spring-cloud-contract.version}</version>
-                <extensions>true</extensions>
+                <extensions>false</extensions>
                 <configuration>
                     <baseClassForTests>
                         com.rzodeczko.paymentservice.contract.BaseContractTest
