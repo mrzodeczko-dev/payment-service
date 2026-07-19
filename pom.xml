@@ -164,6 +164,9 @@
         <repository>
             <id>github-order-service</id>
             <url>https://maven.pkg.github.com/mrzodeczko-dev/order-service</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
         </repository>
     </repositories>
 
@@ -199,13 +202,22 @@
                 <groupId>org.springframework.cloud</groupId>
                 <artifactId>spring-cloud-contract-maven-plugin</artifactId>
                 <version>${spring-cloud-contract.version}</version>
-                <extensions>true</extensions>
+                <extensions>false</extensions>
                 <configuration>
                     <baseClassForTests>
                         com.rzodeczko.paymentservice.contract.BaseContractTest
                     </baseClassForTests>
                     <testFramework>JUNIT5</testFramework>
                 </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generateTests</goal>
+                            <goal>convert</goal>
+                            <goal>generateStubs</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
