@@ -132,4 +132,17 @@ public class PaymentUseCaseImpl implements PaymentUseCase {
 
         log.info("Notification handled. trId={}", notification.trId());
     }
+
+    /**
+     * Refunds a payment by its identifier.
+     *
+     * @param paymentId unique identifier of the payment to refund
+     */
+    @Override
+    public void refundPayment(UUID paymentId) {
+        log.info("Refunding payment. paymentId={}", paymentId);
+        Payment payment = paymentTransactionBoundary.getPaymentById(paymentId);
+        paymentTransactionBoundary.refundPayment(payment);
+        log.info("Payment refunded. paymentId={}", paymentId);
+    }
 }

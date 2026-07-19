@@ -53,4 +53,14 @@ public class PaymentTransactionBoundary {
     public void failPayment(Payment payment) {
         paymentService.failPayment(payment);
     }
+
+    @Transactional(readOnly = true)
+    public Payment getPaymentById(UUID paymentId) {
+        return paymentService.getPaymentById(paymentId);
+    }
+
+    @Transactional
+    public void refundPayment(Payment payment) {
+        paymentService.refundPayment(payment);
+    }
 }

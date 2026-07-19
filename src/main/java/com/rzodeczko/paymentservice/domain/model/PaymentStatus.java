@@ -12,5 +12,8 @@ public enum PaymentStatus {
     PAID,
 
     /** Payment was rejected or could not be completed. */
-    FAILED
+    FAILED,
+
+    /** Payment has been refunded. */
+    REFUNDED
 }

@@ -109,6 +109,19 @@ public class Payment {
         this.status = PaymentStatus.FAILED;
     }
 
+    /**
+     * Marks payment as refunded.
+     *
+     * @throws IllegalArgumentException when payment is not in {@code PAID} or {@code PENDING} status
+     */
+    public void refund() {
+        if (this.status != PaymentStatus.PAID && this.status != PaymentStatus.PENDING) {
+            throw new IllegalArgumentException(
+                    "Cannot refund payment in status: %s. Expected: PAID or PENDING".formatted(this.status));
+        }
+        this.status = PaymentStatus.REFUNDED;
+    }
+
     /** @return payment identifier */
     public UUID getId() {
         return id;

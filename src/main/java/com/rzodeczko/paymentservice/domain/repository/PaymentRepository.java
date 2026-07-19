@@ -39,4 +39,12 @@ public interface PaymentRepository {
      * @return {@link Optional} with the matching payment, or empty when no payment exists for this order
      */
     Optional<Payment> findByOrderId(UUID orderId);
+
+    /**
+     * Retrieves a payment by its internal identifier.
+     *
+     * @param paymentId payment identifier
+     * @return {@link Optional} with the matching payment, or empty when no payment exists
+     */
+    Optional<Payment> findById(UUID paymentId);
 }

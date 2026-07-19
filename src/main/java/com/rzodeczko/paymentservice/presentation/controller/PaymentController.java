@@ -16,6 +16,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 /**
  * REST controller exposing payment-related endpoints.
  *
@@ -92,6 +94,18 @@ public class PaymentController {
             log.error("Notification rejected. trId={}, reason={}", trId, e.getMessage());
             return ResponseEntity.badRequest().body(new NotificationResponseDto("FALSE"));
         }
+    }
+
+    /**
+     * Refunds a payment by its identifier.
+     *
+     * @param paymentId the payment identifier
+     * @return HTTP 200 on success
+     */
+    @PostMapping("/{paymentId}/refund")
+    public ResponseEntity<Void> refundPayment(@PathVariable UUID paymentId) {
+        paymentUseCase.refundPayment(paymentId);
+        return ResponseEntity.ok().build();
     }
 
     /**

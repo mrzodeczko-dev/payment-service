@@ -28,4 +28,11 @@ public interface PaymentUseCase {
      * @param notification notification payload mapped to application command object
      */
     void handleNotification(NotificationCommand notification);
+
+    /**
+     * Refunds a payment by its identifier.
+     *
+     * @param paymentId unique identifier of the payment to refund
+     */
+    void refundPayment(UUID paymentId);
 }

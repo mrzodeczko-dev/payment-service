@@ -87,4 +87,12 @@ public class PaymentRepositoryAdapter implements PaymentRepository {
                 .findByOrderId(orderId)
                 .map(paymentMapper::toDomain);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<Payment> findById(UUID paymentId) {
+        return jpaPaymentRepository
+                .findById(paymentId)
+                .map(paymentMapper::toDomain);
+    }
 }

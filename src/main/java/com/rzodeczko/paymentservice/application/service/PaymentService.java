@@ -59,4 +59,15 @@ public class PaymentService {
         payment.fail();
         paymentRepository.save(payment);
     }
+
+    public Payment getPaymentById(UUID paymentId) {
+        return paymentRepository
+                .findById(paymentId)
+                .orElseThrow(() -> new PaymentNotFoundException(paymentId.toString()));
+    }
+
+    public void refundPayment(Payment payment) {
+        payment.refund();
+        paymentRepository.save(payment);
+    }
 }
