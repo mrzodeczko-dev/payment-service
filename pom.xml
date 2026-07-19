@@ -8,7 +8,7 @@
         <version>4.0.5</version>
         <relativePath/>
     </parent>
-    <groupId>com.app</groupId>
+    <groupId>com.rzodeczko</groupId>
     <artifactId>payment-service</artifactId>
     <version>1.0.0</version>
     <name>payment-service</name>
